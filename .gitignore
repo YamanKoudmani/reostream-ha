@@ -1,7 +1,7 @@
 # Build output
-/bcprobe
-/reostream
-/dist/
+/reostream/bcprobe
+/reostream/reostream
+/reostream/dist/
 
 # Captures and recordings, which are large and often contain credentials
 *.pcap
@@ -11,13 +11,13 @@
 *.h265
 
 # Local configuration and secrets
-reostream.toml
-*.local.toml
+/reostream/reostream.toml
+/reostream/*.local.toml
 
 # Editor and OS noise
 .DS_Store
 *.swp
-internal/rtsp/testdata/*.bin
+/reostream/internal/rtsp/testdata/*.bin
 
 # Local beta instance: config with real camera passwords, and its binary.
-.beta/
+/reostream/.beta/

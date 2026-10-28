@@ -1,0 +1,11 @@
+.git
+.github
+docs
+contrib
+tools
+scripts
+*.md
+Dockerfile.distroless
+docker-compose.yml
+**/*_test.go
+**/testdata

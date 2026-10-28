@@ -1,0 +1,8 @@
+configuration:
+  control_password:
+    name: Control-panel password
+    description: >-
+      Password for the ReoStream web control panel. When set, it is applied on
+      every start. Leave empty to generate a random password on first start;
+      the password is printed in the app log and can be changed later in
+      Settings → Password.

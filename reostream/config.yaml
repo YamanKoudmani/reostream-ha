@@ -1,0 +1,33 @@
+name: ReoStream
+version: "0.1.0"
+slug: reostream
+description: >-
+  Reolink camera proxy that serves clean RTSP and HTTP streams, with camera
+  discovery, live view, recordings and camera settings.
+url: https://github.com/YamanKoudmani/reostream-ha/tree/main/reostream
+arch:
+  - amd64
+  - aarch64
+startup: application
+boot: auto
+init: false
+host_network: true
+ports:
+  8560/tcp: null
+  8561/tcp: null
+  8562/tcp: 8562
+  2121/tcp: null
+ports_description:
+  8560/tcp: HTTP MPEG-TS streams, snapshots and status API
+  8561/tcp: RTSP streams for Frigate, go2rtc, Home Assistant or an NVR
+  8562/tcp: ReoStream web control panel
+  2121/tcp: FTP receiver for clips uploaded by cameras (optional)
+webui: http://[HOST]:[PORT:8562]
+watchdog: http://[HOST]:[PORT:8560]/api/status
+panel_icon: mdi:cctv
+panel_title: ReoStream
+options:
+  control_password: ""
+schema:
+  control_password: password
+image: ghcr.io/yamankoudmani/reostream-ha-{arch}:0.1.0

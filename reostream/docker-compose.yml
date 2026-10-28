@@ -13,7 +13,9 @@ services:
     # Uncomment to build from this checkout instead of pulling the
     # published image. Without it, `docker compose up` pulls, which is
     # what someone who only downloaded this file wants.
-    # build: .
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.distroless
     restart: unless-stopped
     # Host networking: reostream sees your real network, so it finds
     # cameras (battery ones too) and cameras can upload clips to it. Where

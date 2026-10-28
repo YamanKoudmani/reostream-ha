@@ -1,0 +1,11 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+
+code="${1:-unknown}"
+bashio::log.warning "ReoStream exited (${code})."
+
+# A configuration error should not turn into a tight restart loop. A clean
+# exit (the normal container shutdown path) restarts immediately.
+if [ "${code}" != "0" ]; then
+    sleep 5
+fi

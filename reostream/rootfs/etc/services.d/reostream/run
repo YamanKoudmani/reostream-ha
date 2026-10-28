@@ -1,0 +1,168 @@
+#!/usr/bin/with-contenv bashio
+# shellcheck shell=bash
+set -e
+
+readonly CONFIG_FILE=/data/config.toml
+readonly PASSWORD_FILE=/data/.control_password
+readonly OPTIONS_FILE=/data/options.json
+
+generate_password() {
+    local password=""
+    while [ "${#password}" -lt 16 ]; do
+        password="$(dd if=/dev/urandom bs=1 count=48 2>/dev/null \
+            | base64 \
+            | tr -dc 'A-Za-z0-9' \
+            | cut -c1-24)"
+    done
+    printf '%s' "${password}"
+}
+
+write_default_config() {
+    umask 077
+    cat > "${CONFIG_FILE}" <<'EOF'
+listen = "0.0.0.0:8560"
+
+[rtsp]
+listen = "0.0.0.0:8561"
+
+[control]
+listen = "0.0.0.0:8562"
+password = "$REOSTREAM_CONTROL_PASSWORD"
+EOF
+}
+
+# Point [control].password at the environment variable. If the table or the
+# key is missing, add it without touching anything else in the file. This is
+# used when the app configuration sets a password, and when a generated
+# password has to replace a literal one from an earlier install.
+point_config_at_env_password() {
+    local file="$1"
+    local tmp="${file}.tmp.$$"
+
+    awk '
+        BEGIN { in_control = 0; wrote = 0; found = 0 }
+        /^[[:space:]]*\[control\][[:space:]]*$/ {
+            in_control = 1
+            found = 1
+            print
+            next
+        }
+        in_control && !wrote && /^[[:space:]]*\[/ {
+            print "password = \"$REOSTREAM_CONTROL_PASSWORD\""
+            wrote = 1
+            in_control = 0
+            print
+            next
+        }
+        in_control && !wrote && /^[[:space:]]*password[[:space:]]*=/ {
+            print "password = \"$REOSTREAM_CONTROL_PASSWORD\""
+            wrote = 1
+            next
+        }
+        { print }
+        END {
+            if (in_control && !wrote) {
+                print "password = \"$REOSTREAM_CONTROL_PASSWORD\""
+            }
+            if (!found) {
+                print ""
+                print "[control]"
+                print "listen = \"0.0.0.0:8562\""
+                print "password = \"$REOSTREAM_CONTROL_PASSWORD\""
+            }
+        }
+    ' "${file}" > "${tmp}"
+
+    chmod 600 "${tmp}"
+    mv "${tmp}" "${file}"
+}
+
+config_uses_env_password() {
+    [ -f "${CONFIG_FILE}" ] && awk '
+        /^[[:space:]]*\[control\][[:space:]]*$/ { in_control = 1; next }
+        /^[[:space:]]*\[/ { in_control = 0 }
+        in_control && /^[[:space:]]*password[[:space:]]*=/ {
+            if ($0 ~ /REOSTREAM_CONTROL_PASSWORD/) found = 1
+        }
+        END { exit(found ? 0 : 1) }
+    ' "${CONFIG_FILE}"
+}
+
+config_has_control_password() {
+    [ -f "${CONFIG_FILE}" ] \
+        && awk '
+            /^[[:space:]]*\[control\][[:space:]]*$/ { in_control = 1; next }
+            /^[[:space:]]*\[/ { in_control = 0 }
+            in_control && /^[[:space:]]*password[[:space:]]*=/ { found = 1 }
+            END { exit(found ? 0 : 1) }
+        ' "${CONFIG_FILE}"
+}
+
+password_mode="config"
+generated_password=false
+configured_password=""
+
+# Read options.json directly instead of through the Supervisor API. The file
+# is always present in a Home Assistant app, and reading it here also makes a
+# plain `docker run` behave the same way as an installed app.
+if [ -f "${OPTIONS_FILE}" ]; then
+    configured_password="$(jq -r '.control_password // empty' "${OPTIONS_FILE}" 2>/dev/null || true)"
+fi
+
+if [ -n "${configured_password}" ]; then
+    REOSTREAM_CONTROL_PASSWORD="${configured_password}"
+    password_mode="env"
+elif [ ! -f "${CONFIG_FILE}" ] || config_uses_env_password; then
+    password_mode="env"
+    if [ -s "${PASSWORD_FILE}" ]; then
+        REOSTREAM_CONTROL_PASSWORD="$(cat "${PASSWORD_FILE}")"
+    else
+        REOSTREAM_CONTROL_PASSWORD="$(generate_password)"
+        generated_password=true
+    fi
+fi
+
+if [ "${password_mode}" = "env" ]; then
+    if [ "${#REOSTREAM_CONTROL_PASSWORD}" -lt 16 ]; then
+        bashio::log.fatal \
+            "control_password must be at least 16 characters; it is ${#REOSTREAM_CONTROL_PASSWORD}."
+        exit 1
+    fi
+
+    export REOSTREAM_CONTROL_PASSWORD
+
+    umask 077
+    printf '%s' "${REOSTREAM_CONTROL_PASSWORD}" > "${PASSWORD_FILE}"
+
+    if [ -f "${CONFIG_FILE}" ] && ! config_uses_env_password; then
+        bashio::log.info "Applying the control-panel password from the app configuration."
+        cp -p "${CONFIG_FILE}" "${CONFIG_FILE}.bak"
+        point_config_at_env_password "${CONFIG_FILE}"
+    fi
+fi
+
+if [ ! -f "${CONFIG_FILE}" ]; then
+    bashio::log.info "No configuration found; creating ${CONFIG_FILE}."
+    write_default_config
+fi
+
+if [ "${generated_password}" = true ]; then
+    bashio::log.warning "============================================================"
+    bashio::log.warning " ReoStream control-panel password: ${REOSTREAM_CONTROL_PASSWORD}"
+    bashio::log.warning " Stored in ${PASSWORD_FILE}. Change it in the app's"
+    bashio::log.warning " Settings -> Password page, or set control_password in the"
+    bashio::log.warning " app configuration and restart."
+    bashio::log.warning "============================================================"
+fi
+
+if ! config_has_control_password; then
+    bashio::log.warning \
+        "The existing config has no [control].password. The web UI may not be available until one is set."
+fi
+
+bashio::log.info "Web control panel: http://<home-assistant-ip>:8562"
+bashio::log.info "RTSP: rtsp://<home-assistant-ip>:8561/<camera>"
+bashio::log.info "HTTP: http://<home-assistant-ip>:8560/<camera>.ts"
+bashio::log.info "Starting ReoStream..."
+
+exec /usr/local/bin/reostream -data /data

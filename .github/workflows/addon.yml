@@ -54,5 +54,6 @@ jobs:
             ghcr.io/${{ steps.meta.outputs.owner }}/reostream-ha-${{ matrix.ha_arch }}:latest
           build-args: |
             VERSION=${{ steps.meta.outputs.version }}
+            HA_ARCH=${{ matrix.ha_arch }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

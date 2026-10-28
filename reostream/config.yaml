@@ -13,10 +13,10 @@ boot: auto
 init: false
 host_network: true
 ports:
-  8560/tcp: null
-  8561/tcp: null
+  8560/tcp: 8560
+  8561/tcp: 8561
   8562/tcp: 8562
-  2121/tcp: null
+  2121/tcp: 2121
 ports_description:
   8560/tcp: HTTP MPEG-TS streams, snapshots and status API
   8561/tcp: RTSP streams for Frigate, go2rtc, Home Assistant or an NVR
@@ -30,4 +30,5 @@ options:
   control_password: ""
 schema:
   control_password: password
-image: ghcr.io/yamankoudmani/reostream-ha-{arch}:0.1.0
+# No tag here: Supervisor pulls this image with the app version as the tag.
+image: ghcr.io/yamankoudmani/reostream-ha-{arch}

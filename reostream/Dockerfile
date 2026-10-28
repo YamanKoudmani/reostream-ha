@@ -43,6 +43,9 @@ RUN chmod a+x \
 
 FROM ${BUILD_FROM}
 
+ARG VERSION=dev
+ARG HA_ARCH=amd64
+
 COPY --from=build /out/reostream /usr/local/bin/reostream
 COPY --from=build /out/rootfs /
 
@@ -52,10 +55,17 @@ ENV S6_SERVICES_GRACETIME=15000 \
     S6_KILL_GRACETIME=5000
 
 LABEL \
+    io.hass.version="${VERSION}" \
+    io.hass.type="addon" \
+    io.hass.arch="${HA_ARCH}" \
+    io.hass.name="ReoStream" \
+    io.hass.description="Reolink camera proxy with clean RTSP and HTTP streams" \
+    io.hass.url="https://github.com/YamanKoudmani/reostream-ha/tree/main/reostream" \
     org.opencontainers.image.title="Home Assistant App: ReoStream" \
     org.opencontainers.image.description="Reolink camera proxy with clean RTSP and HTTP streams" \
     org.opencontainers.image.source="https://github.com/YamanKoudmani/reostream-ha" \
-    org.opencontainers.image.licenses="AGPL-3.0-only"
+    org.opencontainers.image.licenses="AGPL-3.0-only" \
+    org.opencontainers.image.version="${VERSION}"
 
 # 8560 HTTP streams and status, 8561 RTSP, 8562 control panel,
 # 2121-2131 FTP clip receiver.

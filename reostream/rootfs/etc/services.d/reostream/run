@@ -59,6 +59,13 @@ point_config_at_env_password() {
             wrote = 1
             next
         }
+        # A password set from the app configuration must actually be
+        # required. Leave an explicit no-password config alone unless the
+        # operator is setting one here.
+        in_control && /^[[:space:]]*allow_no_password[[:space:]]*=/ {
+            print "allow_no_password = false"
+            next
+        }
         { print }
         END {
             if (in_control && !wrote) {

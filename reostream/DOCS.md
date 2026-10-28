@@ -22,6 +22,12 @@ The first start creates `/data/config.toml`, generates a 24-character control
 panel password, prints it in the app log, and starts the daemon without the
 normal one-time claim step.
 
+The app store uses images published for `amd64` and `aarch64`. If the Home
+Assistant host cannot reach `ghcr.io`, keep a copy of this repository under
+`/addons`, remove the `image:` line from `reostream/config.yaml`, and reload the
+store. The Supervisor will then build the image on the device from the source in
+`reostream/`.
+
 ## First start
 
 Open the app's **Log** tab and look for:

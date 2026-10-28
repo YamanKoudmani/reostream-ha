@@ -16,5 +16,6 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: reostream/go.mod
+          cache-dependency-path: reostream/go.sum
       - run: go vet ./...
       - run: go test ./...
